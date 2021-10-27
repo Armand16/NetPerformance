@@ -1,64 +1,29 @@
 package com.ajguevara.netperformance;
 
 import static android.location.LocationManager.GPS_PROVIDER;
-import static android.telephony.TelephonyManager.CALL_STATE_IDLE;
-import static android.telephony.TelephonyManager.CALL_STATE_OFFHOOK;
-import static android.telephony.TelephonyManager.CALL_STATE_RINGING;
-import static android.telephony.TelephonyManager.DATA_ACTIVITY_DORMANT;
-import static android.telephony.TelephonyManager.DATA_ACTIVITY_IN;
-import static android.telephony.TelephonyManager.DATA_ACTIVITY_INOUT;
-import static android.telephony.TelephonyManager.DATA_ACTIVITY_NONE;
-import static android.telephony.TelephonyManager.DATA_ACTIVITY_OUT;
-import static android.telephony.TelephonyManager.DATA_CONNECTED;
-import static android.telephony.TelephonyManager.DATA_CONNECTING;
-import static android.telephony.TelephonyManager.DATA_DISCONNECTED;
-import static android.telephony.TelephonyManager.DATA_SUSPENDED;
-import static android.telephony.TelephonyManager.NETWORK_TYPE_1xRTT;
-import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
-import static android.telephony.TelephonyManager.PHONE_TYPE_GSM;
-import static android.telephony.TelephonyManager.PHONE_TYPE_NONE;
-import static android.telephony.TelephonyManager.PHONE_TYPE_SIP;
-import static android.telephony.TelephonyManager.SIM_STATE_ABSENT;
-import static android.telephony.TelephonyManager.SIM_STATE_CARD_IO_ERROR;
-import static android.telephony.TelephonyManager.SIM_STATE_CARD_RESTRICTED;
-import static android.telephony.TelephonyManager.SIM_STATE_NETWORK_LOCKED;
-import static android.telephony.TelephonyManager.SIM_STATE_NOT_READY;
-import static android.telephony.TelephonyManager.SIM_STATE_PERM_DISABLED;
-import static android.telephony.TelephonyManager.SIM_STATE_PIN_REQUIRED;
-import static android.telephony.TelephonyManager.SIM_STATE_PUK_REQUIRED;
-import static android.telephony.TelephonyManager.SIM_STATE_READY;
-import static android.telephony.TelephonyManager.SIM_STATE_UNKNOWN;
 
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 
-import com.google.android.material.snackbar.Snackbar;
-
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
-import android.view.View;
 
 import androidx.core.app.ActivityCompat;
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
-
-import com.ajguevara.netperformance.databinding.ActivityMainBinding;
 
 import android.view.Menu;
 import android.view.MenuItem;
 
 import android.telephony.TelephonyManager;
+import android.widget.TextView;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -67,30 +32,12 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private AppBarConfiguration appBarConfiguration;
-    private ActivityMainBinding binding;
     private static final int PERMISSION_REQUEST_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-
-        setSupportActionBar(binding.toolbar);
-
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        setContentView(R.layout.activity_main);
 
         requestPermission();
 
@@ -118,11 +65,12 @@ public class MainActivity extends AppCompatActivity {
             r.put("signalQuality", this.getSignalQuality());
             r.put("latitude", this.getLatitude());
             r.put("longitude", this.getLongitude());
+
+            TextView txtView = (TextView) findViewById(R.id.textView);
+            txtView.setText(r.toString());
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
-
     }
 
     @Override
@@ -146,14 +94,6 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
-    }
-
 
     //--------------------------------------------------------------------------
     // LOCAL METHODS
@@ -198,11 +138,6 @@ public class MainActivity extends AppCompatActivity {
             return "";
         }
         return tm.getDeviceSoftwareVersion();
-    }
-
-    public String getDeviceId() {
-        TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        return tm.getDeviceId();
     }
 
     public String getPhoneType() {
@@ -355,11 +290,6 @@ public class MainActivity extends AppCompatActivity {
         return tm.getSimCountryIso();
     }
 
-    public String getSubscriberId() {
-        TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        return tm.getSubscriberId();
-    }
-
     public String getVoiceMailAlphaTag() {
         TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
@@ -413,13 +343,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public String getLatitude() {
-        Location location = new Location(GPS_PROVIDER);
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return "";
+        }
+        Location location = locationManager.getLastKnownLocation(GPS_PROVIDER);
         double latitude = location.getLatitude();
         return Double.toString(latitude);
     }
 
     public String getLongitude() {
-        Location location = new Location(GPS_PROVIDER);
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return "";
+        }
+        Location location = locationManager.getLastKnownLocation(GPS_PROVIDER);
         double longitude = location.getLongitude();
         return Double.toString(longitude);
     }
