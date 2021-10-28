@@ -5,13 +5,17 @@ import static android.location.LocationManager.GPS_PROVIDER;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.provider.Settings;
+import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
@@ -19,11 +23,17 @@ import android.telephony.CellInfoWcdma;
 
 import androidx.core.app.ActivityCompat;
 
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import android.telephony.TelephonyManager;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -40,37 +50,42 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         requestPermission();
-
         JSONObject r = new JSONObject();
-        try {
-            r.put("phone", this.getPhoneNumber());
-            r.put("simOperatorName", this.getSimOperatorName());
-            r.put("simOperator", this.getSimOperator());
-            r.put("networkOperatorName", this.getNetworkOperatorName());
-            r.put("networkOperator", this.getNetworkOperator());
-            r.put("networkCountryIso", this.getNetworkCountryIso());
-            r.put("deviceSoftwareVersion", this.getDeviceSoftwareVersion());
-            r.put("phoneType", this.getPhoneType());
-            r.put("isNetworkRoaming", this.isNetworkRoaming());
-            r.put("simState", this.getSimState());
-            r.put("networkType", this.getNetworkType());
-            r.put("callState", this.getCallState());
-            r.put("dataState", this.getDataState());
-            r.put("groupIdLevel", this.getGroupIdLevel1());
-            r.put("simCountryIso", this.getSimCountryIso());
-            r.put("voiceMailAlphaTag", this.getVoiceMailAlphaTag());
-            r.put("voiceMailNumber", this.getVoiceMailNumber());
-            r.put("hasIccCard", this.hasIccCard());
-            r.put("dataActivity", this.getDataActivity());
-            r.put("signalQuality", this.getSignalQuality());
-            r.put("latitude", this.getLatitude());
-            r.put("longitude", this.getLongitude());
 
-            TextView txtView = (TextView) findViewById(R.id.textView);
+        TextView txtView = (TextView) findViewById(R.id.textView);
+        Button button = (Button) findViewById(R.id.button);
+
+        button.setOnClickListener(v -> {
+
+            try {
+                r.put("simOperatorName", getSimOperatorName());
+                r.put("simOperator", getSimOperator());
+                r.put("networkOperatorName", getNetworkOperatorName());
+                r.put("networkOperator", getNetworkOperator());
+                r.put("networkCountryIso", getNetworkCountryIso());
+                r.put("deviceSoftwareVersion", getDeviceSoftwareVersion());
+                r.put("phoneType", getPhoneType());
+                r.put("isNetworkRoaming", isNetworkRoaming());
+                r.put("simState", getSimState());
+                r.put("networkType", getNetworkType());
+                r.put("callState", getCallState());
+                r.put("dataState", getDataState());
+                r.put("groupIdLevel", getGroupIdLevel1());
+                r.put("simCountryIso", getSimCountryIso());
+                r.put("voiceMailAlphaTag", getVoiceMailAlphaTag());
+                r.put("voiceMailNumber", getVoiceMailNumber());
+                r.put("hasIccCard", hasIccCard());
+                r.put("dataActivity", getDataActivity());
+                r.put("signalQuality", getSignalQuality());
+//                r.put("latitude", getLatitude());
+//                r.put("longitude", getLongitude());
+                r.put("location", getLocation());
+                r.put("eNodeB", getENodeB());
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
             txtView.setText(r.toString());
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        });
     }
 
     @Override
@@ -348,8 +363,12 @@ public class MainActivity extends AppCompatActivity {
             return "";
         }
         Location location = locationManager.getLastKnownLocation(GPS_PROVIDER);
-        double latitude = location.getLatitude();
-        return Double.toString(latitude);
+        if (location != null) {
+            double latitude = location.getLatitude();
+            return Double.toString(latitude);
+        } else {
+            return "";
+        }
     }
 
     public String getLongitude() {
@@ -358,8 +377,91 @@ public class MainActivity extends AppCompatActivity {
             return "";
         }
         Location location = locationManager.getLastKnownLocation(GPS_PROVIDER);
-        double longitude = location.getLongitude();
-        return Double.toString(longitude);
+        if (location != null) {
+            double longitude = location.getLongitude();
+            return Double.toString(longitude);
+        } else {
+            return "";
+        }
+    }
+
+    public JSONObject getLocation() throws JSONException {
+        JSONObject jLocation = new JSONObject();
+        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+//        String bestProvider = locationManager.getBestProvider(criteria, false);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            jLocation.put("latitude", "");
+            jLocation.put("longitude", "");
+
+            return jLocation;
+        }
+
+        Location location;
+        LocationListener loc_listener = new LocationListener() {
+
+            public void onLocationChanged(Location l) {
+            }
+
+            public void onProviderEnabled(String p) {
+            }
+
+            public void onProviderDisabled(String p) {
+            }
+
+            public void onStatusChanged(String p, int status, Bundle extras) {
+            }
+        };
+        locationManager
+                .requestLocationUpdates(GPS_PROVIDER, 0, 0, loc_listener);
+        location = locationManager.getLastKnownLocation(GPS_PROVIDER);
+        try {
+            jLocation.put("latitude", Double.toString(location.getLatitude()));
+            jLocation.put("longitude", Double.toString(location.getLongitude()));
+
+        } catch (NullPointerException e) {
+            jLocation.put("latitude", "");
+            jLocation.put("longitude", "");
+        }
+
+        return jLocation;
+    }
+
+    public String getENodeB() {
+        TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return "";
+        }
+        List<CellInfo> info = tm.getAllCellInfo();
+        for (CellInfo i:info) {
+            if (i instanceof CellInfoLte){
+                int longCid = ((CellInfoLte) i).getCellIdentity().getCi();
+
+                String cellIdHex = DecToHex(longCid);
+                String eNBHex = cellIdHex.substring(0, cellIdHex.length()-2);
+
+                int eNB = HexToDec(eNBHex);
+
+                return Integer.toString(eNB);
+            }
+        }
+
+        return "";
+    }
+
+    public String getSpeedDownload(){
+
+        return "";
+    }
+
+    // Decimal -> hexadecimal
+    public String DecToHex(int dec){
+        return String.format("%x", dec);
+    }
+
+    // hex -> decimal
+    public int HexToDec(String hex){
+        return Integer.parseInt(hex, 16);
     }
 
     public JSONObject getSignalQuality() {
